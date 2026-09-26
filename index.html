@@ -276,6 +276,7 @@ const MODULES = {
     nome:"Impermeabilizzazione",
     misure:["Superficie netta (m²)","Perimetro totale (ml)","Di cui contro muro (ml)","Quota utile alla soglia (cm)","Altezza risvolti possibile (cm)","Numero scarichi (cad)"],
     verdetti:[
+      {id:"imp0",q:"Infiltrazioni nell'ambiente sottostante",o:["Assenti","Localizzate","Diffuse"],req:true},
       {id:"imp1",q:"Massetto alla percussione",o:["Sano","Distacco localizzato","Distacco diffuso"],req:true},
       {id:"imp2",q:"Quota disponibile alla soglia",o:["Basta per sovrapporre","Al limite","Insufficiente: demolire"],req:true},
       {id:"imp3",q:"Pendenze attuali",o:["Regolari","Irregolari","Contropendenza"],req:true},
@@ -284,6 +285,7 @@ const MODULES = {
       {id:"imp6",q:"Montanti ringhiera",o:["In bussole aperte","Da verificare","Annegati nel massetto"],req:false}
     ],
     foto:["Vista d'insieme con metro esteso","Ognuno dei quattro angoli","Ogni scarico e pluviale","Giunto muro-pavimento","Soglia e quota disponibile","Ambiente sottostante","Base dei montanti ringhiera"],
+    vincoli:["Tempi di maturazione da rispettare"],
     interfacce:["Serramenti e soglie","Ringhiera e montanti","Gronde e pluviali","Finiture interne sottostanti","Parti comuni condominiali"]
   },
   pav:{
@@ -296,6 +298,7 @@ const MODULES = {
       {id:"pav4",q:"Umidità nel supporto",o:["Assente","Sospetta","Conclamata"],req:false}
     ],
     foto:["Vista d'insieme","Posa e formato esistente","Soglie e passaggi di porta","Angoli e giunti","Zone ammalorate"],
+    vincoli:["Tempi di maturazione da rispettare"],
     interfacce:["Porte e soglie","Battiscopa esistente","Sanitari e mobili fissi","Impianti a pavimento"]
   },
   int:{
@@ -308,7 +311,8 @@ const MODULES = {
       {id:"int4",q:"Cornicioni, davanzali, gocciolatoi",o:["Integri","Da ripristinare","Assenti o inefficaci"],req:false}
     ],
     foto:["Ogni prospetto intero","Dettaglio delle zone degradate","Cornicioni e davanzali","Base del muro","Punti di appoggio del ponteggio"],
-    interfacce:["Serramenti e davanzali","Gronde e pluviali","Impianti a parete","Insegne, tende, condizionatori"]
+    vincoli:["Tempi di maturazione da rispettare"],
+    interfacce:["Serramenti e davanzali","Gronde e pluviali","Impianti a parete","Insegne, tende, condizionatori","Parti comuni condominiali"]
   },
   sca:{
     nome:"Scavi e movimento terra",
@@ -331,7 +335,8 @@ const MODULES = {
       {id:"ca3",q:"Causa apparente",o:["Infiltrazione","Carbonatazione","Da determinare"],req:true}
     ],
     foto:["Elemento nel suo insieme","Ogni zona degradata","Intradosso","Ferri a vista con metro accanto"],
-    interfacce:["Ringhiere ancorate","Pluviali e scarichi","Finiture adiacenti"]
+    vincoli:["Tempi di maturazione da rispettare"],
+    interfacce:["Ringhiere ancorate","Pluviali e scarichi","Finiture adiacenti","Parti comuni condominiali"]
   },
   dem:{
     nome:"Demolizioni e rimozioni",
@@ -342,23 +347,22 @@ const MODULES = {
       {id:"dem3",q:"Percorso di calo delle macerie",o:["Libero","Limitato","Da organizzare"],req:true}
     ],
     foto:["Elemento da demolire","Appoggi e vincoli","Percorso delle macerie","Area di sosta del cassone"],
-    interfacce:["Impianti dentro l'elemento","Strutture adiacenti","Finiture da salvare"]
+    interfacce:["Impianti dentro l'elemento","Strutture adiacenti","Parti comuni condominiali"]
   },
   alt:{
     nome:"Altro / misto",
     misure:["Quantità principale","Quantità secondaria"],
     verdetti:[{id:"alt1",q:"Stato dell'esistente",o:V3,req:true}],
     foto:["Vista d'insieme con metro esteso","Dettagli del problema"],
-    interfacce:["Opere di altri","Finiture da salvare"]
+    interfacce:["Parti comuni condominiali"]
   }
 };
 
 const FOTO_BASE=["Vista d'insieme dall'esterno","Numero civico o riferimento del luogo","Percorso di accesso della squadra","Punto di scarico del materiale"];
-const INT_BASE=["Impianti a vista","Parti comuni","Opere già eseguite da altri","Finiture esistenti da salvare"];
-const VERD_BASE=[
-  {id:"g1",q:"Tracce di umidità o infiltrazione",o:["Assenti","Localizzate","Diffuse"],req:true},
-  {id:"g2",q:"Stato generale dell'esistente",o:["Buono","Da valutare","Compromesso"],req:true}
-];
+const INT_BASE=["Impianti esistenti (acqua, luce, gas, scarichi)","Opere già eseguite da altri","Elementi esistenti da salvare"];
+/* nessuna verifica generica: la diagnostica dipende solo dai tipi di lavoro scelti */
+const VERD_BASE=[];
+const VINC_BASE=["Persone presenti durante i lavori","Acqua disponibile in cantiere","Corrente disponibile in cantiere","Vincoli di orario","Vincoli di stagione o meteo"];
 const UNITA=["m²","ml","m³","cad","ore","corpo","kg"];
 
 /* ============ stato ============ */
@@ -404,6 +408,11 @@ function interfacceAttive(){
   moduliAttivi().forEach(m=>m.interfacce.forEach(x=>{if(!i.includes(x))i.push(x);}));
   return i;
 }
+function vincoliAttivi(){
+  const v=VINC_BASE.slice();
+  moduliAttivi().forEach(m=>(m.vincoli||[]).forEach(x=>{if(!v.includes(x))v.push(x);}));
+  return v;
+}
 function misureSuggerite(){
   const out=[];moduliAttivi().forEach(m=>m.misure.forEach(x=>{if(!out.includes(x))out.push(x);}));return out;
 }
@@ -420,7 +429,7 @@ function mancanti(){
   verdettiAttivi().forEach(v=>{
     if(v.req&&!S.verdetti[v.id]) m.push({t:"Verdetto: "+v.q,s:"s3"});
   });
-  if(!S.piano.trim()) m.push({t:"Piano e accesso",s:"s5"});
+  if(!S.piano.trim()) m.push({t:"Accesso al punto di lavoro",s:"s5"});
   if(!S.osp) m.push({t:"Suolo pubblico sì o no",s:"s5"});
   if(!S.nessunaIncognita && !S.incognite.filter(x=>x.trim()).length)
     m.push({t:"Incognite dichiarate",s:"s8"});
@@ -603,7 +612,7 @@ function render(){
   const ospFlag=el("div",{class:"flag"+(S.osp==="Sì"?"":" hidden"),
     text:"Suolo pubblico: la pratica va avviata subito. La data di inizio la detta l'autorizzazione, non tu. Ricorda la planimetria quotata e la larghezza di carreggiata residua."});
   app.appendChild(sezione("s5","Accesso e logistica",[
-    campo("Piano e accesso (ascensore, scale, larghezze)",S.piano,v=>S.piano=v),
+    campo("Accesso al punto di lavoro (piano, scale, cancelli, larghezze)",S.piano,v=>S.piano=v),
     campo("Da dove entra il materiale",S.accessoMat,v=>S.accessoMat=v),
     el("label",{class:"f"},[el("span",{text:"Mezzi e attrezzature necessarie"}),mezziBox]),
     ospSel,ospFlag
@@ -611,7 +620,7 @@ function render(){
 
   /* --- 6 vincoli operativi --- */
   const vv=el("div",{});
-  ["Persone presenti durante i lavori","Acqua disponibile in cantiere","Corrente disponibile in cantiere","Vincoli di orario","Vincoli di stagione o temperatura","Tempi di maturazione da rispettare"].forEach(x=>{
+  vincoliAttivi().forEach(x=>{
     vv.appendChild(spunta(x,!!S.vincoli[x],v=>{S.vincoli[x]=v;}));
   });
   app.appendChild(sezione("s6","Vincoli operativi",[
@@ -730,14 +739,14 @@ function testo(){
   if(itf.length)itf.forEach(x=>L.push("- "+x+": "+S.interfacce[x]));else L.push("- non definite");
   L.push("");
   L.push("ACCESSO E LOGISTICA");
-  P("Piano e accesso",S.piano);P("Ingresso materiale",S.accessoMat);
+  P("Accesso",S.piano);P("Ingresso materiale",S.accessoMat);
   const mz=Object.keys(S.mezzi).filter(k=>S.mezzi[k]);
   if(mz.length)L.push("Mezzi: "+mz.join(", "));
   P("Suolo pubblico",S.osp);
   if(S.osp==="Sì")L.push("  >> avviare subito la pratica: la data di inizio dipende dall'autorizzazione");
   L.push("");
   L.push("VINCOLI OPERATIVI");
-  const vk=Object.keys(S.vincoli).filter(k=>S.vincoli[k]);
+  const vk=vincoliAttivi().filter(k=>S.vincoli[k]);
   if(vk.length)vk.forEach(k=>L.push("- "+k));else L.push("- nessuno segnalato");
   if(S.orari.trim())L.push("Note: "+S.orari);
   L.push("");
