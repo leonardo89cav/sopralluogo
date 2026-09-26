@@ -3,7 +3,7 @@
    scarica la versione nuova invece di riusare quella in cache. */
 const VERSIONE = "v1";
 const CACHE = "sopralluogo-" + VERSIONE;
-const FILE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
+const FILE = ["./", "./index.html", "./manifest.webmanifest"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILE)).then(() => self.skipWaiting()));
