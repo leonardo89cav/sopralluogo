@@ -1,7 +1,7 @@
 /* Scheda sopralluogo — service worker.
    Cambia VERSIONE ogni volta che modifichi index.html, così il telefono
    scarica la versione nuova invece di riusare quella in cache. */
-const VERSIONE = "v4";
+const VERSIONE = "v5";
 const CACHE = "sopralluogo-" + VERSIONE;
 const FILE = ["./", "./index.html", "./manifest.webmanifest"];
 
