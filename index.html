@@ -175,6 +175,9 @@ textarea{min-height:88px;resize:vertical}
 
 .grp{font-size:13.5px;font-weight:650;color:var(--soft);margin:14px 0 2px}
 .grp:first-child{margin-top:4px}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.calc{margin-top:8px;font-size:14.5px;font-weight:600;font-variant-numeric:tabular-nums}
+.row .mz{flex:1;min-width:0;font-size:15px}
 .flag{
   margin-top:10px;background:#FFF6DC;border:1px solid var(--signal);
   border-left-width:4px;border-radius:0 3px 3px 0;padding:10px 12px;font-size:14px
@@ -458,11 +461,12 @@ function vuoto(){
     piano:"",ascensore:"",accessoMat:"",mezzi:{},osp:"",
     vincoli:{},orari:"",rifiuti:[],cassone:"",
     incognite:[],nessunaIncognita:false,
-    committente:"",firma:"",residenziale:"",note:"",altroDesc:"",verCustom:[],aperte:{s0:true}};
+    committente:"",firma:"",residenziale:"",note:"",altroDesc:"",verCustom:[],
+    tempi:{persone:"",giornate:"",calendario:"",mezzi:{},affid:"",note:""},aperte:{s0:true}};
 }
 function oggi(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 function carica(){
-  try{const r=localStorage.getItem(KEY);if(r){return Object.assign(vuoto(),JSON.parse(r));}}catch(e){}
+  try{const r=localStorage.getItem(KEY);if(r){const o=Object.assign(vuoto(),JSON.parse(r));o.tempi=Object.assign(vuoto().tempi,o.tempi||{});return o;}}catch(e){}
   return vuoto();
 }
 function salva(){
@@ -487,6 +491,11 @@ function interfacceAttive(){
   moduliAttivi().forEach(m=>m.interfacce.forEach(x=>{if(!i.includes(x))i.push(x);}));
   return i;
 }
+const AFFID=["Affidabile","Indicativa","Molto incerta"];
+function numero(x){const n=parseFloat(String(x||"").replace(",","."));return isFinite(n)?n:null;}
+function fmt(n){return (Math.round(n*10)/10).toString().replace(".",",");}
+function giornateUomo(){const a=numero(S.tempi.persone),b=numero(S.tempi.giornate);return a!==null&&b!==null?a*b:null;}
+function mezziScelti(){return MEZZI_TUTTI.filter(k=>S.mezzi[k]);}
 function vincoliAttivi(){
   const v=VINC_BASE.slice();
   moduliAttivi().forEach(m=>(m.vincoli||[]).forEach(x=>{if(!v.includes(x))v.push(x);}));
@@ -514,6 +523,7 @@ function mancanti(){
   vc.forEach(x=>{if(!x.v) m.push({t:"Verdetto: "+x.q.trim(),s:"s3"});});
   if(!S.piano.trim()) m.push({t:"Accesso al punto di lavoro",s:"s5"});
   if(!S.osp) m.push({t:"Suolo pubblico sì o no",s:"s5"});
+  if(!String(S.tempi.persone).trim()||!String(S.tempi.giornate).trim()) m.push({t:"Stima tempi: persone e giornate",s:"s5t"});
   if(!S.nessunaIncognita && !S.incognite.filter(x=>x.trim()).length)
     m.push({t:"Incognite dichiarate",s:"s8"});
   if(!S.committente) m.push({t:"Chi è il committente",s:"s9"});
@@ -715,8 +725,7 @@ function render(){
       const c=el("button",{class:"chip"+(S.mezzi[x]?" on":""),type:"button","aria-pressed":S.mezzi[x]?"true":"false",text:x});
       c.addEventListener("click",()=>{
         S.mezzi[x]=!S.mezzi[x];
-        c.classList.toggle("on",S.mezzi[x]);c.setAttribute("aria-pressed",S.mezzi[x]?"true":"false");
-        salva();
+        salva();render();
       });
       cc.appendChild(c);
     });
@@ -731,6 +740,50 @@ function render(){
     el("label",{class:"f"},[el("span",{text:"Mezzi e attrezzature necessarie"}),mezziBox]),
     ospSel,ospFlag
   ],st("s5",S.piano&&S.osp)));
+
+  /* --- 5t stima tempi --- */
+  const T=S.tempi;
+  const numIn=(val,ph,on)=>{
+    const i=el("input",{type:"text",class:"num",value:val||"",placeholder:ph,inputmode:"decimal"});
+    i.addEventListener("input",()=>{on(i.value);salva();aggiornaTesta();aggiornaGU();});
+    return i;
+  };
+  const guOut=el("div",{class:"calc"});
+  function aggiornaGU(){
+    const g=giornateUomo();
+    guOut.textContent=g===null?"Giornate-uomo: compila persone e giornate":"Giornate-uomo: "+fmt(g);
+  }
+  aggiornaGU();
+  const duo=el("div",{class:"duo"},[
+    el("label",{class:"f"},[el("span",{text:"Persone in squadra"}),numIn(T.persone,"es. 3",v=>T.persone=v)]),
+    el("label",{class:"f"},[el("span",{text:"Giornate di lavoro"}),numIn(T.giornate,"es. 2",v=>T.giornate=v)])
+  ]);
+  const mzT=el("div",{});
+  const scelti=mezziScelti();
+  if(!scelti.length) mzT.appendChild(el("p",{class:"hint",text:"Seleziona i mezzi in Accesso e logistica: qui indichi per quanto tempo servono."}));
+  scelti.forEach(x=>{
+    const cur=T.mezzi[x]||(T.mezzi[x]={q:"",u:"giorni"});
+    const q=el("input",{type:"text",class:"q num",value:cur.q,placeholder:"qtà",inputmode:"decimal"});
+    q.addEventListener("input",()=>{cur.q=q.value;salva();});
+    const u=el("select",{});
+    ["ore","giorni"].forEach(o=>{const op=el("option",{value:o,text:o});if(cur.u===o)op.selected=true;u.appendChild(op);});
+    u.addEventListener("change",()=>{cur.u=u.value;salva();});
+    mzT.appendChild(el("div",{class:"row"},[el("span",{class:"mz",text:x}),q,u]));
+  });
+  const aff=el("div",{class:"opts"});
+  AFFID.forEach((o,idx)=>{
+    const b=el("button",{class:"opt"+(T.affid===o?" sel":""),type:"button","data-t":String(idx+1),text:o});
+    b.addEventListener("click",()=>{T.affid=T.affid===o?"":o;salva();render();});
+    aff.appendChild(b);
+  });
+  app.appendChild(sezione("s5t","Stima tempi",[
+    el("p",{class:"hint",text:"Giornate di squadra e ore dei mezzi: su scavi, movimento terra e recinzioni sono spesso la voce più pesante del preventivo."}),
+    duo,guOut,
+    el("label",{class:"f"},[el("span",{text:"Durata in calendario (giorni), compresi i tempi di attesa"}),numIn(T.calendario,"es. 10",v=>T.calendario=v)]),
+    el("div",{class:"grp",text:"Tempo per ogni mezzo"}),mzT,
+    el("div",{class:"grp",text:"Quanto è affidabile questa stima"}),aff,
+    campo("Note sui tempi",T.note,v=>T.note=v)
+  ],st("s5t",String(T.persone).trim()&&String(T.giornate).trim())));
 
   /* --- 6 vincoli operativi --- */
   const vv=el("div",{});
@@ -852,6 +905,7 @@ function sintesi(){
   if(S.osp==="Sì")att.push("Suolo pubblico: avviare subito la pratica, la data di inizio dipende dall'autorizzazione");
   if(S.firma==="A casa del cliente")att.push("Firma fuori sede: serve l'informativa scritta sul recesso");
   if(S.residenziale==="Da verificare")att.push("Immobile residenziale: da verificare");
+  if(S.tempi.affid==="Molto incerta")att.push("Stima dei tempi molto incerta: valutare una riserva sui tempi");
   S.incognite.filter(x=>x.trim()).forEach(x=>prev.push("Riserva: "+x.trim()));
   interfacceAttive().filter(x=>S.interfacce[x]==="Escluso").forEach(x=>prev.push("Esclusione: "+x));
   return {crit,att,prev};
@@ -893,6 +947,17 @@ function testo(){
   const mz=MEZZI_TUTTI.filter(k=>S.mezzi[k]);
   if(mz.length)L.push("Mezzi: "+mz.join(", "));
   P("Suolo pubblico",S.osp==="Sì"?"Sì 🟠":S.osp);
+  L.push("");
+  L.push("STIMA TEMPI");
+  const Tt=S.tempi,gu=giornateUomo();
+  if(String(Tt.persone).trim()||String(Tt.giornate).trim())
+    L.push("Squadra: "+(Tt.persone||"?")+" persone × "+(Tt.giornate||"?")+" giornate"+(gu!==null?" = "+fmt(gu)+" giornate-uomo":""));
+  else L.push("Squadra: NON STIMATA");
+  P("Durata in calendario",String(Tt.calendario).trim()?Tt.calendario+" giorni":"");
+  const ms=mezziScelti();
+  if(ms.length){L.push("Mezzi:");ms.forEach(x=>{const c=Tt.mezzi[x];L.push("- "+x+": "+(c&&String(c.q).trim()?c.q+" "+c.u:"durata non indicata"));});}
+  P("Affidabilità della stima",Tt.affid==="Molto incerta"?Tt.affid+" 🟠":Tt.affid);
+  P("Note",Tt.note);
   L.push("");
   L.push("VINCOLI OPERATIVI");
   const vk=vincoliAttivi().filter(k=>S.vincoli[k]);
@@ -939,7 +1004,7 @@ document.getElementById("hideMissing").addEventListener("click",()=>{
   const b=document.getElementById("missingBox");b.dataset.hidden="1";b.hidden=true;
 });
 document.getElementById("btnOpenAll").addEventListener("click",e=>{
-  const tutte=["s0","s1","s2","s3","s4","s5","s6","s7","s8","s9","s10","s11"];
+  const tutte=["s0","s1","s2","s3","s4","s5","s5t","s6","s7","s8","s9","s10","s11"];
   const apri=!tutte.every(k=>S.aperte[k]);
   tutte.forEach(k=>S.aperte[k]=apri);
   e.target.textContent=apri?"Chiudi tutto":"Apri tutto";
