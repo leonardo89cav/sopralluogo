@@ -143,6 +143,7 @@ textarea{min-height:88px;resize:vertical}
   font-size:14px;line-height:1.2;cursor:pointer
 }
 .opt:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.opt.sel[data-t="0"]{background:var(--ink);border-color:var(--ink);color:#fff}
 .opt.sel[data-t="1"]{background:var(--ok);border-color:var(--ok);color:#fff}
 .opt.sel[data-t="2"]{background:var(--warn);border-color:var(--warn);color:#fff}
 .opt.sel[data-t="3"]{background:var(--bad);border-color:var(--bad);color:#fff}
@@ -172,6 +173,8 @@ textarea{min-height:88px;resize:vertical}
 }
 .add:hover{border-color:var(--ink)}
 
+.grp{font-size:13.5px;font-weight:650;color:var(--soft);margin:14px 0 2px}
+.grp:first-child{margin-top:4px}
 .flag{
   margin-top:10px;background:#FFF6DC;border:1px solid var(--signal);
   border-left-width:4px;border-radius:0 3px 3px 0;padding:10px 12px;font-size:14px
@@ -270,8 +273,100 @@ dialog::backdrop{background:rgba(20,30,36,.62)}
 "use strict";
 
 /* ============ moduli di mestiere ============ */
+/* n:true = scelta neutra (nessun giudizio buono/cattivo), mostrata senza semaforo */
 const V3 = ["Sano","Da verificare","Compromesso"];
 const MODULES = {
+  sca:{
+    nome:"Scavi, movimento terra e spianamenti",
+    misure:["Volume di scavo (m³)","Superficie interessata (m²)","Profondità (m)","Dislivello da compensare (cm)","Distanza di conferimento (km)"],
+    verdetti:[
+      {id:"sca1",q:"Natura del terreno",o:["Sciolto","Compatto","Roccia o trovanti"],req:true},
+      {id:"sca2",q:"Sottoservizi nell'area",o:["Assenti e verificati","Da verificare","Presenti e interferenti"],req:true},
+      {id:"sca3",q:"Accessibilità del mezzo",o:["Piena","Limitata","Non accessibile"],req:true},
+      {id:"sca5",q:"Bilancio della terra",o:["Si compensa sul posto","Terra in eccesso da portare via","Serve terra di riporto"],req:true},
+      {id:"sca4",q:"Acqua o falda",o:["Assente","Possibile","Presente"],req:false}
+    ],
+    foto:["Area di intervento","Punto di accesso del mezzo","Chiusini e sottoservizi visibili","Punti più alti e più bassi dell'area","Area di deposito o rilevato","Confini e manufatti vicini"],
+    interfacce:["Recinzioni e cancelli","Alberature","Pavimentazioni esistenti","Confini di proprietà"]
+  },
+  cls:{
+    nome:"Getto cemento armato",
+    misure:["Volume calcestruzzo (m³)","Casseratura (m²)","Armatura (kg)","Scavo di fondazione (m³)"],
+    verdetti:[
+      {id:"cls1",q:"Progetto e disegni esecutivi",o:["Disponibili","In arrivo","Assenti: serve tecnico"],req:true},
+      {id:"cls2",q:"Accesso dell'autobetoniera",o:["Diretto allo scarico","Serve la pompa","Non arriva: getto manuale"],req:true},
+      {id:"cls3",q:"Piano di posa",o:["Idoneo","Da verificare","Da bonificare"],req:true},
+      {id:"cls4",q:"Casseratura",o:["Semplice","Articolata","Complessa o faccia a vista"],req:true},
+      {id:"cls5",q:"Acqua nello scavo",o:["Assente","Possibile","Presente"],req:false}
+    ],
+    foto:["Area del getto con metro esteso","Percorso e piazzola dell'autobetoniera","Piano di posa","Attacchi a strutture esistenti"],
+    vincoli:["Tempi di maturazione da rispettare"],
+    interfacce:["Strutture esistenti da collegare","Impianti da annegare nel getto","Confini di proprietà"]
+  },
+  fog:{
+    nome:"Fognature e acque bianche",
+    misure:["Lunghezza tracciato (ml)","Profondità media (m)","Pozzetti (cad)","Allacci (cad)","Ripristino pavimentazione (m²)"],
+    verdetti:[
+      {id:"fog1",q:"Tipo di intervento",o:["Nuova linea","Sistemazione parziale","Rifacimento completo"],req:true,n:true},
+      {id:"fog2",q:"Recapito finale",o:["Allaccio esistente","Allaccio da realizzare","Da definire"],req:true},
+      {id:"fog3",q:"Pendenze disponibili",o:["Sufficienti","Al limite","Insufficienti: serve sollevamento"],req:true},
+      {id:"fog4",q:"Sottoservizi sul tracciato",o:["Assenti e verificati","Da verificare","Presenti e interferenti"],req:true},
+      {id:"fog5",q:"Superficie sopra il tracciato",o:["Terreno naturale","Pavimentazione privata","Strada o area pubblica"],req:true},
+      {id:"fog6",q:"Condotte esistenti",o:["In buono stato","Da ispezionare","Rotte o ostruite"],req:false}
+    ],
+    foto:["Tracciato completo","Pozzetti esistenti aperti","Punto di recapito finale","Superficie da rompere"],
+    interfacce:["Allaccio alla rete pubblica","Pluviali e scarichi dell'edificio","Proprietà attraversate dal tracciato"]
+  },
+  rec:{
+    nome:"Recinzioni in legno o ferro",
+    misure:["Sviluppo recinzione (ml)","Altezza (m)","Pali o montanti (cad)","Cancelli e cancelletti (cad)"],
+    verdetti:[
+      {id:"rec1",q:"Materiale",o:["Legno","Ferro e rete a maglie","Misto"],req:true,n:true},
+      {id:"rec2",q:"Fondazione dei pali",o:["Pali infissi","Plinti isolati","Cordolo continuo"],req:true,n:true},
+      {id:"rec3",q:"Terreno lungo il tracciato",o:["In piano","In pendenza","Irregolare o a gradoni"],req:true},
+      {id:"rec4",q:"Confine",o:["Definito e condiviso","Da verificare","Contestato"],req:true},
+      {id:"rec5",q:"Recinzione esistente",o:["Assente","Da rimuovere in parte","Da rimuovere tutta"],req:true},
+      {id:"rec6",q:"Ostacoli sul tracciato (alberi, radici, rocce)",o:["Assenti","Localizzati","Diffusi"],req:false}
+    ],
+    foto:["Tracciato intero da un'estremità","Punti di partenza e arrivo","Posizione di cancelli e cancelletti","Recinzione esistente"],
+    interfacce:["Confini con i vicini","Cancelli e automazioni","Alberature e siepi"]
+  },
+  psec:{
+    nome:"Muri in pietra a secco",
+    misure:["Sviluppo del muro (ml)","Altezza media (m)","Spessore medio (cm)","Volume (m³)"],
+    verdetti:[
+      {id:"psec1",q:"Funzione del muro",o:["Solo delimitazione","Contenimento basso","Contenimento alto: serve tecnico"],req:true},
+      {id:"psec2",q:"Pietra",o:["Recuperata sul posto","In parte da fornire","Tutta da fornire"],req:true},
+      {id:"psec3",q:"Muro esistente",o:["Assente","Da ricostruire in parte","Crollato o da smontare"],req:true},
+      {id:"psec4",q:"Accesso per pietra e mezzi",o:["Buono","Limitato","Solo a mano"],req:true},
+      {id:"psec5",q:"Acqua a monte del muro",o:["Assente","Da drenare","Presente e abbondante"],req:false}
+    ],
+    foto:["Muro o tracciato per intero","Tratti crollati o spanciati","Terreno a monte","Pietra disponibile sul posto"],
+    interfacce:["Confini con i vicini","Alberature e radici","Terreno a monte"]
+  },
+  mur:{
+    nome:"Muratura in mattoni",
+    misure:["Superficie di muro (m²)","Sviluppo (ml)","Altezza (m)","Aperture (cad)"],
+    verdetti:[
+      {id:"mur1",q:"Funzione del muro",o:["Divisorio o tamponamento","Muretto o recinzione","Portante: serve tecnico"],req:true},
+      {id:"mur2",q:"Base d'appoggio",o:["Esistente e idonea","Da verificare","Da realizzare"],req:true},
+      {id:"mur3",q:"Finitura",o:["Faccia a vista","Da intonacare","Da rivestire"],req:true,n:true},
+      {id:"mur4",q:"Collegamento a murature esistenti",o:["Non previsto","Semplice","Da ammorsare o ancorare"],req:false}
+    ],
+    foto:["Posizione del muro con metro esteso","Base d'appoggio","Attacchi a murature esistenti"],
+    interfacce:["Impianti da incassare","Serramenti o aperture","Finiture adiacenti"]
+  },
+  dem:{
+    nome:"Demolizioni e rimozioni",
+    misure:["Volume da demolire (m³)","Superficie (m²)","Spessore (cm)"],
+    verdetti:[
+      {id:"dem1",q:"Elemento portante",o:["No, verificato","Dubbio: serve tecnico","Sì"],req:true},
+      {id:"dem2",q:"Materiali da verificare prima della rimozione",o:["Nessuno","Da verificare","Presenti"],req:true},
+      {id:"dem3",q:"Percorso di calo delle macerie",o:["Libero","Limitato","Da organizzare"],req:true}
+    ],
+    foto:["Elemento da demolire","Appoggi e vincoli","Percorso delle macerie","Area di sosta del cassone"],
+    interfacce:["Impianti dentro l'elemento","Strutture adiacenti","Parti comuni condominiali"]
+  },
   imp:{
     nome:"Impermeabilizzazione",
     misure:["Superficie netta (m²)","Perimetro totale (ml)","Di cui contro muro (ml)","Quota utile alla soglia (cm)","Altezza risvolti possibile (cm)","Numero scarichi (cad)"],
@@ -314,55 +409,39 @@ const MODULES = {
     vincoli:["Tempi di maturazione da rispettare"],
     interfacce:["Serramenti e davanzali","Gronde e pluviali","Impianti a parete","Insegne, tende, condizionatori","Parti comuni condominiali"]
   },
-  sca:{
-    nome:"Scavi e movimento terra",
-    misure:["Volume di scavo (m³)","Superficie interessata (m²)","Profondità (m)","Distanza di conferimento (km)"],
-    verdetti:[
-      {id:"sca1",q:"Natura del terreno",o:["Sciolto","Compatto","Roccia o trovanti"],req:true},
-      {id:"sca2",q:"Sottoservizi nell'area",o:["Assenti e verificati","Da verificare","Presenti e interferenti"],req:true},
-      {id:"sca3",q:"Accessibilità del mezzo",o:["Piena","Limitata","Non accessibile"],req:true},
-      {id:"sca4",q:"Acqua o falda",o:["Assente","Possibile","Presente"],req:false}
-    ],
-    foto:["Area di intervento","Punto di accesso del mezzo","Chiusini e sottoservizi visibili","Area di deposito o rilevato","Confini e manufatti vicini"],
-    interfacce:["Recinzioni e cancelli","Alberature","Pavimentazioni esistenti","Confini di proprietà"]
-  },
   ca:{
     nome:"Ripristino cemento armato",
     misure:["Superficie da ripristinare (m²)","Sviluppo frontalini (ml)","Spessore medio asportato (cm)"],
     verdetti:[
       {id:"ca1",q:"Ferri a vista",o:["Assenti","Localizzati","Diffusi"],req:true},
       {id:"ca2",q:"Estensione del degrado",o:["Puntuale","Estesa","Strutturale: serve tecnico"],req:true},
-      {id:"ca3",q:"Causa apparente",o:["Infiltrazione","Carbonatazione","Da determinare"],req:true}
+      {id:"ca3",q:"Causa apparente",o:["Infiltrazione","Carbonatazione","Da determinare"],req:true,n:true}
     ],
     foto:["Elemento nel suo insieme","Ogni zona degradata","Intradosso","Ferri a vista con metro accanto"],
     vincoli:["Tempi di maturazione da rispettare"],
     interfacce:["Ringhiere ancorate","Pluviali e scarichi","Finiture adiacenti","Parti comuni condominiali"]
   },
-  dem:{
-    nome:"Demolizioni e rimozioni",
-    misure:["Volume da demolire (m³)","Superficie (m²)","Spessore (cm)"],
-    verdetti:[
-      {id:"dem1",q:"Elemento portante",o:["No, verificato","Dubbio: serve tecnico","Sì"],req:true},
-      {id:"dem2",q:"Materiali da verificare prima della rimozione",o:["Nessuno","Da verificare","Presenti"],req:true},
-      {id:"dem3",q:"Percorso di calo delle macerie",o:["Libero","Limitato","Da organizzare"],req:true}
-    ],
-    foto:["Elemento da demolire","Appoggi e vincoli","Percorso delle macerie","Area di sosta del cassone"],
-    interfacce:["Impianti dentro l'elemento","Strutture adiacenti","Parti comuni condominiali"]
-  },
   alt:{
     nome:"Altro / misto",
     misure:["Quantità principale","Quantità secondaria"],
-    verdetti:[{id:"alt1",q:"Stato dell'esistente",o:V3,req:true}],
+    verdetti:[],
     foto:["Vista d'insieme con metro esteso","Dettagli del problema"],
     interfacce:["Parti comuni condominiali"]
   }
 };
+const V_CUSTOM=["Buono","Da verificare","Critico"];
 
 const FOTO_BASE=["Vista d'insieme dall'esterno","Numero civico o riferimento del luogo","Percorso di accesso della squadra","Punto di scarico del materiale"];
 const INT_BASE=["Impianti esistenti (acqua, luce, gas, scarichi)","Opere già eseguite da altri","Elementi esistenti da salvare"];
 /* nessuna verifica generica: la diagnostica dipende solo dai tipi di lavoro scelti */
 const VERD_BASE=[];
 const VINC_BASE=["Persone presenti durante i lavori","Acqua disponibile in cantiere","Corrente disponibile in cantiere","Vincoli di orario","Vincoli di stagione o meteo"];
+const MEZZI=[
+  {g:"Trasporto",l:["Daily","Pickup","Eurocargo","Trakker"]},
+  {g:"Movimento terra",l:["Escavatore 18 qt","Escavatore 80 qt","Skid loader","Terna","Rullo compattatore"]},
+  {g:"Quota e sollevamento",l:["Ponteggio","Piattaforma aerea","Autogrù"]}
+];
+const MEZZI_TUTTI=MEZZI.flatMap(x=>x.l);
 const UNITA=["m²","ml","m³","cad","ore","corpo","kg"];
 
 /* ============ stato ============ */
@@ -379,7 +458,7 @@ function vuoto(){
     piano:"",ascensore:"",accessoMat:"",mezzi:{},osp:"",
     vincoli:{},orari:"",rifiuti:[],cassone:"",
     incognite:[],nessunaIncognita:false,
-    committente:"",firma:"",residenziale:"",note:"",aperte:{s0:true}};
+    committente:"",firma:"",residenziale:"",note:"",altroDesc:"",verCustom:[],aperte:{s0:true}};
 }
 function oggi(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 function carica(){
@@ -422,6 +501,7 @@ function mancanti(){
   const m=[];
   if(!S.cliente.trim()||!S.luogo.trim()) m.push({t:"Cliente e luogo",s:"s0"});
   if(!S.tipi.length) m.push({t:"Tipo di lavoro",s:"s0"});
+  if(S.tipi.includes("alt")&&!S.altroDesc.trim()) m.push({t:"Descrizione della lavorazione",s:"s0"});
   if(!S.richiesta.trim()) m.push({t:"Richiesta del cliente",s:"s1"});
   if(!S.osservato.trim()) m.push({t:"Cosa hai osservato tu",s:"s1"});
   const mis=S.misure.filter(r=>r.v.trim()&&r.q.trim());
@@ -429,6 +509,9 @@ function mancanti(){
   verdettiAttivi().forEach(v=>{
     if(v.req&&!S.verdetti[v.id]) m.push({t:"Verdetto: "+v.q,s:"s3"});
   });
+  const vc=S.verCustom.filter(x=>x.q.trim());
+  if(S.tipi.includes("alt")&&!vc.length) m.push({t:"Almeno una verifica per Altro / misto",s:"s3"});
+  vc.forEach(x=>{if(!x.v) m.push({t:"Verdetto: "+x.q.trim(),s:"s3"});});
   if(!S.piano.trim()) m.push({t:"Accesso al punto di lavoro",s:"s5"});
   if(!S.osp) m.push({t:"Suolo pubblico sì o no",s:"s5"});
   if(!S.nessunaIncognita && !S.incognite.filter(x=>x.trim()).length)
@@ -516,7 +599,8 @@ function render(){
     campo("Cliente",S.cliente,v=>S.cliente=v),
     campo("Luogo e indirizzo",S.luogo,v=>S.luogo=v),
     campo("Data",S.data,v=>S.data=v,"date"),
-    el("label",{class:"f"},[el("span",{text:"Tipo di lavoro (anche più di uno)"}),chips])
+    el("label",{class:"f"},[el("span",{text:"Tipo di lavoro (anche più di uno)"}),chips]),
+    S.tipi.includes("alt")?campo("Descrivi la lavorazione (Altro / misto)",S.altroDesc,v=>S.altroDesc=v):null
   ],st("s0",S.cliente&&S.luogo&&S.tipi.length)));
 
   /* --- 1 richiesta / osservato --- */
@@ -566,11 +650,12 @@ function render(){
   /* --- 3 diagnostica --- */
   const dg=el("div",{});
   const va=verdettiAttivi();
-  if(!va.length||!S.tipi.length) dg.appendChild(el("p",{class:"hint",text:"Scegli il tipo di lavoro nella testata per caricare le verifiche giuste."}));
+  if(!S.tipi.length) dg.appendChild(el("p",{class:"hint",text:"Scegli il tipo di lavoro nella testata per caricare le verifiche giuste."}));
+  else if(!va.length) dg.appendChild(el("p",{class:"hint",text:"Per questo tipo di lavoro aggiungi tu le verifiche che servono."}));
   va.forEach(v=>{
     const opts=el("div",{class:"opts"});
     v.o.forEach((o,idx)=>{
-      const b=el("button",{class:"opt"+(S.verdetti[v.id]===o?" sel":""),type:"button","data-t":String(idx+1),text:o});
+      const b=el("button",{class:"opt"+(S.verdetti[v.id]===o?" sel":""),type:"button","data-t":v.n?"0":String(idx+1),text:o});
       b.addEventListener("click",()=>{
         S.verdetti[v.id]=S.verdetti[v.id]===o?null:o;salva();render();
       });
@@ -580,11 +665,29 @@ function render(){
       el("div",{class:"q"},[document.createTextNode(v.q),v.req?el("em",{text:"bloccante"}):null]),opts
     ]));
   });
+  const cust=el("div",{});
+  if(S.verCustom.length) cust.appendChild(el("div",{class:"grp",text:"Verifiche aggiunte da te"}));
+  S.verCustom.forEach((x,i)=>{
+    const t=el("input",{type:"text",value:x.q,placeholder:"cosa hai verificato"});
+    t.addEventListener("input",()=>{x.q=t.value;salva();aggiornaTesta();});
+    const d=el("button",{class:"del",type:"button",text:"×","aria-label":"Elimina verifica"});
+    d.addEventListener("click",()=>{S.verCustom.splice(i,1);salva();render();});
+    const opts=el("div",{class:"opts"});
+    V_CUSTOM.forEach((o,idx)=>{
+      const b=el("button",{class:"opt"+(x.v===o?" sel":""),type:"button","data-t":String(idx+1),text:o});
+      b.addEventListener("click",()=>{x.v=x.v===o?"":o;salva();render();});
+      opts.appendChild(b);
+    });
+    cust.appendChild(el("div",{class:"verdict"},[el("div",{class:"row"},[t,d]),opts]));
+  });
+  const addV=el("button",{class:"add",type:"button",text:"+ Aggiungi verifica"});
+  addV.addEventListener("click",()=>{S.verCustom.push({q:"",v:""});salva();render();});
   const vreq=va.filter(v=>v.req);
+  const vcOk=S.verCustom.filter(x=>x.q.trim());
   app.appendChild(sezione("s3","Diagnostica",[
     el("p",{class:"hint",text:"Il tuo giudizio, non la foto. Percussione, livella, filo, prova di scarico: queste le fai tu e nessuno le ricava dopo."}),
-    dg
-  ],st("s3",vreq.length&&vreq.every(v=>S.verdetti[v.id]))));
+    dg,cust,addV
+  ],st("s3",(vreq.length||vcOk.length)&&vreq.every(v=>S.verdetti[v.id])&&vcOk.every(x=>x.v))));
 
   /* --- 4 interfacce --- */
   const itf=el("div",{});
@@ -605,8 +708,19 @@ function render(){
 
   /* --- 5 accesso e logistica --- */
   const mezziBox=el("div",{});
-  ["Ponteggio","Piattaforma aerea","Autogrù","Escavatore","Nessun mezzo speciale"].forEach(x=>{
-    mezziBox.appendChild(spunta(x,!!S.mezzi[x],v=>{S.mezzi[x]=v;}));
+  MEZZI.forEach(gr=>{
+    mezziBox.appendChild(el("div",{class:"grp",text:gr.g}));
+    const cc=el("div",{class:"chips"});
+    gr.l.forEach(x=>{
+      const c=el("button",{class:"chip"+(S.mezzi[x]?" on":""),type:"button","aria-pressed":S.mezzi[x]?"true":"false",text:x});
+      c.addEventListener("click",()=>{
+        S.mezzi[x]=!S.mezzi[x];
+        c.classList.toggle("on",S.mezzi[x]);c.setAttribute("aria-pressed",S.mezzi[x]?"true":"false");
+        salva();
+      });
+      cc.appendChild(c);
+    });
+    mezziBox.appendChild(cc);
   });
   const ospSel=scelta("Occupazione di suolo pubblico",S.osp,["Sì","No"],v=>{S.osp=v;render();});
   const ospFlag=el("div",{class:"flag"+(S.osp==="Sì"?"":" hidden"),
@@ -723,7 +837,7 @@ function testo(){
   L.push("VERBALE DI SOPRALLUOGO");
   L.push("");
   P("Cliente",S.cliente);P("Luogo",S.luogo);P("Data",S.data);
-  P("Tipo di lavoro",S.tipi.map(k=>MODULES[k].nome).join(", "));
+  P("Tipo di lavoro",S.tipi.map(k=>k==="alt"&&S.altroDesc.trim()?"Altro: "+S.altroDesc.trim():MODULES[k].nome).join(", "));
   L.push("");
   L.push("RICHIESTA DEL CLIENTE");L.push(S.richiesta.trim()||"—");L.push("");
   L.push("OSSERVAZIONE DIRETTA");L.push(S.osservato.trim()||"—");L.push("");
@@ -733,6 +847,8 @@ function testo(){
   L.push("");
   L.push("DIAGNOSTICA");
   verdettiAttivi().forEach(v=>L.push("- "+v.q+": "+(S.verdetti[v.id]||"NON RILEVATO")));
+  S.verCustom.filter(x=>x.q.trim()).forEach(x=>L.push("- "+x.q.trim()+": "+(x.v||"NON RILEVATO")));
+  if(!verdettiAttivi().length&&!S.verCustom.some(x=>x.q.trim())) L.push("- nessuna verifica");
   L.push("");
   L.push("INTERFACCE");
   const itf=interfacceAttive().filter(x=>S.interfacce[x]);
@@ -740,7 +856,7 @@ function testo(){
   L.push("");
   L.push("ACCESSO E LOGISTICA");
   P("Accesso",S.piano);P("Ingresso materiale",S.accessoMat);
-  const mz=Object.keys(S.mezzi).filter(k=>S.mezzi[k]);
+  const mz=MEZZI_TUTTI.filter(k=>S.mezzi[k]);
   if(mz.length)L.push("Mezzi: "+mz.join(", "));
   P("Suolo pubblico",S.osp);
   if(S.osp==="Sì")L.push("  >> avviare subito la pratica: la data di inizio dipende dall'autorizzazione");
