@@ -831,6 +831,31 @@ function aggiornaTesta(){
 }
 
 /* ============ esportazione ============ */
+/* livello di un giudizio: 3 = critico (rosso), 2 = attenzione (arancio), 0 = ok o scelta neutra */
+function livello(v,val){
+  if(!val||v.n) return 0;
+  const i=v.o.indexOf(val);
+  return i===2?3:(i===1?2:0);
+}
+function livelloCustom(val){return val==="Critico"?3:(val==="Da verificare"?2:0);}
+const SEGNO={3:" 🔴",2:" 🟠"};
+function sintesi(){
+  const crit=[],att=[],prev=[];
+  verdettiAttivi().forEach(v=>{
+    const val=S.verdetti[v.id],l=livello(v,val);
+    if(l===3)crit.push(v.q+": "+val);else if(l===2)att.push(v.q+": "+val);
+  });
+  S.verCustom.filter(x=>x.q.trim()).forEach(x=>{
+    const l=livelloCustom(x.v);
+    if(l===3)crit.push(x.q.trim()+": "+x.v);else if(l===2)att.push(x.q.trim()+": "+x.v);
+  });
+  if(S.osp==="Sì")att.push("Suolo pubblico: avviare subito la pratica, la data di inizio dipende dall'autorizzazione");
+  if(S.firma==="A casa del cliente")att.push("Firma fuori sede: serve l'informativa scritta sul recesso");
+  if(S.residenziale==="Da verificare")att.push("Immobile residenziale: da verificare");
+  S.incognite.filter(x=>x.trim()).forEach(x=>prev.push("Riserva: "+x.trim()));
+  interfacceAttive().filter(x=>S.interfacce[x]==="Escluso").forEach(x=>prev.push("Esclusione: "+x));
+  return {crit,att,prev};
+}
 function testo(){
   const L=[];
   const P=(k,v)=>{if(v&&String(v).trim())L.push(k+": "+v);};
@@ -839,6 +864,15 @@ function testo(){
   P("Cliente",S.cliente);P("Luogo",S.luogo);P("Data",S.data);
   P("Tipo di lavoro",S.tipi.map(k=>k==="alt"&&S.altroDesc.trim()?"Altro: "+S.altroDesc.trim():MODULES[k].nome).join(", "));
   L.push("");
+  const mmTop=mancanti(),sx=sintesi();
+  L.push("════════ SINTESI ════════");
+  if(mmTop.length)L.push("⛔ Scheda incompleta: mancano "+mmTop.length+" dati (elenco in fondo)");
+  if(!sx.crit.length&&!sx.att.length)L.push("🟢 Nessuna criticità né punto di attenzione"+(mmTop.length?" tra i dati compilati":""));
+  if(sx.crit.length){L.push("");L.push("🔴 CRITICITÀ");sx.crit.forEach(x=>L.push("- "+x));}
+  if(sx.att.length){L.push("");L.push("🟠 ATTENZIONE");sx.att.forEach(x=>L.push("- "+x));}
+  if(sx.prev.length){L.push("");L.push("📝 DA SCRIVERE NEL PREVENTIVO");sx.prev.forEach(x=>L.push("- "+x));}
+  L.push("═════════════════════════");
+  L.push("");
   L.push("RICHIESTA DEL CLIENTE");L.push(S.richiesta.trim()||"—");L.push("");
   L.push("OSSERVAZIONE DIRETTA");L.push(S.osservato.trim()||"—");L.push("");
   L.push("QUANTITÀ MISURATE");
@@ -846,20 +880,19 @@ function testo(){
   if(mis.length)mis.forEach(r=>L.push("- "+r.v+": "+(r.q||"?")+" "+r.u));else L.push("- nessuna");
   L.push("");
   L.push("DIAGNOSTICA");
-  verdettiAttivi().forEach(v=>L.push("- "+v.q+": "+(S.verdetti[v.id]||"NON RILEVATO")));
-  S.verCustom.filter(x=>x.q.trim()).forEach(x=>L.push("- "+x.q.trim()+": "+(x.v||"NON RILEVATO")));
+  verdettiAttivi().forEach(v=>{const val=S.verdetti[v.id];L.push("- "+v.q+": "+(val||"NON RILEVATO")+(SEGNO[livello(v,val)]||""));});
+  S.verCustom.filter(x=>x.q.trim()).forEach(x=>L.push("- "+x.q.trim()+": "+(x.v||"NON RILEVATO")+(SEGNO[livelloCustom(x.v)]||"")));
   if(!verdettiAttivi().length&&!S.verCustom.some(x=>x.q.trim())) L.push("- nessuna verifica");
   L.push("");
   L.push("INTERFACCE");
   const itf=interfacceAttive().filter(x=>S.interfacce[x]);
-  if(itf.length)itf.forEach(x=>L.push("- "+x+": "+S.interfacce[x]));else L.push("- non definite");
+  if(itf.length)itf.forEach(x=>L.push("- "+x+": "+S.interfacce[x]+(S.interfacce[x]==="Escluso"?" 📝":"")));else L.push("- non definite");
   L.push("");
   L.push("ACCESSO E LOGISTICA");
   P("Accesso",S.piano);P("Ingresso materiale",S.accessoMat);
   const mz=MEZZI_TUTTI.filter(k=>S.mezzi[k]);
   if(mz.length)L.push("Mezzi: "+mz.join(", "));
-  P("Suolo pubblico",S.osp);
-  if(S.osp==="Sì")L.push("  >> avviare subito la pratica: la data di inizio dipende dall'autorizzazione");
+  P("Suolo pubblico",S.osp==="Sì"?"Sì 🟠":S.osp);
   L.push("");
   L.push("VINCOLI OPERATIVI");
   const vk=vincoliAttivi().filter(k=>S.vincoli[k]);
@@ -873,13 +906,12 @@ function testo(){
   L.push("");
   L.push("INCOGNITE DA TRASFORMARE IN RISERVE O ESCLUSIONI");
   const ic=S.incognite.filter(x=>x.trim());
-  if(ic.length)ic.forEach(x=>L.push("- "+x));
+  if(ic.length)ic.forEach(x=>L.push("- "+x+" 📝"));
   else L.push(S.nessunaIncognita?"- dichiarato: nessuna, verificato tutto":"- NON COMPILATO");
   L.push("");
   L.push("INQUADRAMENTO CONTRATTUALE");
-  P("Committente",S.committente);P("Firma",S.firma);
-  if(S.firma==="A casa del cliente")L.push("  >> serve informativa scritta sul recesso");
-  P("Residenziale",S.residenziale);
+  P("Committente",S.committente);P("Firma",S.firma==="A casa del cliente"?S.firma+" 🟠":S.firma);
+  P("Residenziale",S.residenziale==="Da verificare"?S.residenziale+" 🟠":S.residenziale);
   L.push("");
   L.push("SET FOTOGRAFICO");
   const fa=fotoAttive();
@@ -887,10 +919,9 @@ function testo(){
   const manc=fa.filter(x=>!S.foto[x]);
   if(manc.length)L.push(">> mancano "+manc.length+" scatti");
   if(S.note.trim()){L.push("");L.push("NOTE");L.push(S.note.trim());}
-  const mm=mancanti();
-  if(mm.length){
-    L.push("");L.push("SCHEDA INCOMPLETA — mancano:");
-    mm.forEach(x=>L.push("- "+x.t));
+  if(mmTop.length){
+    L.push("");L.push("⛔ SCHEDA INCOMPLETA — mancano:");
+    mmTop.forEach(x=>L.push("- "+x.t));
   }
   return L.join("\n");
 }
