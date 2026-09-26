@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1C2B33">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<title>Scheda sopralluogo</title>
+<style>
+:root{
+  --bg:#E9ECEE;
+  --card:#FFFFFF;
+  --ink:#1C2B33;
+  --soft:#5C6D77;
+  --rule:#C6D0D5;
+  --rule-strong:#9DAAB1;
+  --signal:#F2B705;
+  --signal-deep:#8A6600;
+  --ok:#1E7A4B;
+  --warn:#B96A00;
+  --bad:#B3261E;
+  --focus:#0B69A3;
+  --tap:56px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  font-size:17px;
+  line-height:1.45;
+  padding-bottom:calc(96px + env(safe-area-inset-bottom));
+}
+button,input,textarea,select{font:inherit;color:inherit}
+input,textarea,select{background:#fff}
+
+/* ---- testata fissa ---- */
+header{
+  position:sticky;top:0;z-index:40;
+  background:var(--ink);color:#fff;
+  padding:calc(10px + env(safe-area-inset-top)) 14px 10px;
+  box-shadow:0 2px 0 rgba(0,0,0,.18);
+}
+.hrow{display:flex;align-items:center;gap:12px}
+.hid{flex:1;min-width:0}
+.hid .t{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hid .s{font-size:13px;color:#A9BAC4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gap{
+  display:flex;align-items:baseline;gap:7px;
+  background:var(--signal);color:#2A1F00;
+  border-radius:3px;padding:5px 11px 6px;font-weight:700;
+}
+.gap.zero{background:var(--ok);color:#fff}
+.gap b{font-size:26px;line-height:1;font-variant-numeric:tabular-nums}
+.gap span{font-size:12px;max-width:74px;line-height:1.1}
+
+.missing{
+  margin-top:10px;background:#2A3B45;border-left:4px solid var(--signal);
+  padding:9px 12px;border-radius:0 3px 3px 0;
+}
+.missing p{margin:0 0 5px;font-size:12px;color:#A9BAC4}
+.missing ul{margin:0;padding-left:17px;font-size:14px;color:#fff}
+.missing li{margin-bottom:3px}
+.missing button{
+  margin-top:7px;background:none;border:none;color:var(--signal);
+  font-size:13px;padding:6px 0;text-decoration:underline;cursor:pointer
+}
+
+/* ---- sezioni ---- */
+main{padding:12px 10px 0;max-width:720px;margin:0 auto}
+section{
+  background:var(--card);border:1px solid var(--rule);
+  border-radius:4px;margin-bottom:10px;overflow:hidden
+}
+.sec-head{
+  display:flex;align-items:center;gap:10px;width:100%;
+  min-height:var(--tap);padding:10px 12px;
+  background:none;border:none;text-align:left;cursor:pointer
+}
+.sec-head:focus-visible{outline:3px solid var(--focus);outline-offset:-3px}
+.sec-head h2{margin:0;font-size:16px;font-weight:650;flex:1}
+.tick{
+  width:22px;height:22px;flex:0 0 22px;border-radius:50%;
+  border:2px solid var(--rule-strong);display:grid;place-items:center;
+  font-size:13px;font-weight:700;color:transparent
+}
+.tick.done{background:var(--ok);border-color:var(--ok);color:#fff}
+.tick.hole{background:var(--signal);border-color:var(--signal);color:#2A1F00}
+.chev{color:var(--soft);font-size:13px;transition:transform .15s}
+section.open .chev{transform:rotate(90deg)}
+.sec-body{display:none;padding:2px 12px 14px;border-top:1px solid var(--rule)}
+section.open .sec-body{display:block}
+.hint{font-size:13.5px;color:var(--soft);margin:10px 0 12px}
+
+/* ---- campi ---- */
+label.f{display:block;margin:12px 0 0}
+label.f>span{display:block;font-size:13.5px;color:var(--soft);margin-bottom:5px}
+input[type=text],input[type=date],textarea,select{
+  width:100%;padding:12px;border:1.5px solid var(--rule-strong);border-radius:3px
+}
+input[type=text]:focus,textarea:focus,select:focus,input[type=date]:focus{
+  outline:none;border-color:var(--focus);box-shadow:0 0 0 3px rgba(11,105,163,.16)
+}
+textarea{min-height:88px;resize:vertical}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* ---- spunte ---- */
+.check{
+  display:flex;align-items:flex-start;gap:12px;
+  min-height:var(--tap);padding:11px 4px;
+  border-bottom:1px solid var(--rule);cursor:pointer
+}
+.check:last-child{border-bottom:none}
+.box{
+  width:26px;height:26px;flex:0 0 26px;margin-top:1px;
+  border:2px solid var(--rule-strong);border-radius:3px;background:#fff;
+  display:grid;place-items:center;font-size:17px;color:transparent;font-weight:700
+}
+.check.on .box{background:var(--ok);border-color:var(--ok);color:#fff}
+.check.on .lb{color:var(--soft)}
+.lb{flex:1;font-size:16px}
+.check input{position:absolute;opacity:0;width:0;height:0}
+.check:focus-within .box{outline:3px solid var(--focus);outline-offset:2px}
+
+/* ---- verdetti ---- */
+.verdict{padding:12px 0;border-bottom:1px solid var(--rule)}
+.verdict:last-child{border-bottom:none}
+.verdict .q{font-size:15.5px;margin-bottom:9px;display:flex;gap:7px}
+.verdict .q em{
+  font-style:normal;color:var(--signal-deep);font-size:12px;
+  border:1px solid var(--signal);background:#FFF6DC;
+  border-radius:2px;padding:1px 5px;height:fit-content;white-space:nowrap
+}
+.opts{display:flex;gap:7px;flex-wrap:wrap}
+.opt{
+  flex:1 1 0;min-width:92px;min-height:48px;padding:8px 6px;
+  border:1.5px solid var(--rule-strong);border-radius:3px;background:#fff;
+  font-size:14px;line-height:1.2;cursor:pointer
+}
+.opt:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.opt.sel[data-t="1"]{background:var(--ok);border-color:var(--ok);color:#fff}
+.opt.sel[data-t="2"]{background:var(--warn);border-color:var(--warn);color:#fff}
+.opt.sel[data-t="3"]{background:var(--bad);border-color:var(--bad);color:#fff}
+
+/* ---- chip tipo lavoro ---- */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.chip{
+  min-height:48px;padding:10px 14px;border-radius:3px;
+  border:1.5px solid var(--rule-strong);background:#fff;font-size:15px;cursor:pointer
+}
+.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.chip:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+
+/* ---- righe dinamiche ---- */
+.row{display:flex;gap:7px;margin-bottom:8px;align-items:center}
+.row input[type=text]{flex:1;min-width:0;padding:11px 10px}
+.row .q{flex:0 0 78px}
+.row select{flex:0 0 88px;padding:11px 6px}
+.del{
+  flex:0 0 44px;height:44px;border:1.5px solid var(--rule-strong);
+  background:#fff;border-radius:3px;color:var(--bad);font-size:20px;cursor:pointer
+}
+.add{
+  width:100%;min-height:50px;margin-top:4px;background:#fff;
+  border:1.5px dashed var(--rule-strong);border-radius:3px;
+  color:var(--ink);font-size:15px;cursor:pointer
+}
+.add:hover{border-color:var(--ink)}
+
+.flag{
+  margin-top:10px;background:#FFF6DC;border:1px solid var(--signal);
+  border-left-width:4px;border-radius:0 3px 3px 0;padding:10px 12px;font-size:14px
+}
+.flag.hidden{display:none}
+
+/* ---- barra azioni ---- */
+.bar{
+  position:fixed;left:0;right:0;bottom:0;z-index:50;
+  background:var(--card);border-top:1px solid var(--rule-strong);
+  padding:10px 10px calc(10px + env(safe-area-inset-bottom));
+  display:flex;gap:8px;max-width:720px;margin:0 auto
+}
+.bar button{
+  flex:1;min-height:52px;border-radius:3px;font-size:16px;font-weight:600;cursor:pointer;
+  border:1.5px solid var(--ink);background:#fff
+}
+.bar .primary{background:var(--ink);color:#fff}
+.bar .ghost{flex:0 0 58px;font-size:20px;font-weight:400}
+
+/* ---- pannello esporta ---- */
+dialog{
+  border:none;border-radius:5px;padding:0;width:min(94vw,660px);
+  max-height:86vh;color:var(--ink)
+}
+dialog::backdrop{background:rgba(20,30,36,.62)}
+.dlg-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--rule)}
+.dlg-head h2{margin:0;font-size:17px;flex:1}
+.dlg-head button{border:none;background:none;font-size:26px;line-height:1;padding:6px 10px;cursor:pointer}
+.dlg-body{padding:14px;overflow:auto;max-height:52vh}
+.dlg-body pre{
+  margin:0;white-space:pre-wrap;word-break:break-word;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:12.5px;line-height:1.5;background:#F4F6F7;
+  border:1px solid var(--rule);border-radius:3px;padding:11px
+}
+.dlg-actions{display:flex;flex-wrap:wrap;gap:8px;padding:12px 14px;border-top:1px solid var(--rule)}
+.dlg-actions button{
+  flex:1 1 120px;min-height:50px;border-radius:3px;border:1.5px solid var(--ink);
+  background:#fff;font-size:15px;font-weight:600;cursor:pointer
+}
+.dlg-actions .primary{background:var(--ink);color:#fff}
+
+.toast{
+  position:fixed;left:50%;bottom:96px;transform:translateX(-50%);
+  background:var(--ink);color:#fff;padding:11px 18px;border-radius:3px;
+  font-size:15px;z-index:99;opacity:0;pointer-events:none;transition:opacity .2s
+}
+.toast.show{opacity:1}
+.note{font-size:13px;color:var(--soft);text-align:center;padding:4px 16px 18px;max-width:720px;margin:0 auto}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <div class="hid">
+      <div class="t" id="hTitle">Nuovo sopralluogo</div>
+      <div class="s" id="hSub">Compila la testata per iniziare</div>
+    </div>
+    <div class="gap" id="gapBadge"><b>0</b><span>dati bloccanti mancanti</span></div>
+  </div>
+  <div class="missing" id="missingBox" hidden>
+    <p>Non chiudere il sopralluogo senza:</p>
+    <ul id="missingList"></ul>
+    <button type="button" id="hideMissing">Nascondi</button>
+  </div>
+</header>
+
+<main id="app"></main>
+<p class="note" id="noteSave">Salvataggio automatico su questo telefono. Funziona senza rete.</p>
+
+<div class="bar">
+  <button type="button" class="ghost" id="btnReset" title="Nuovo sopralluogo" aria-label="Nuovo sopralluogo">⟳</button>
+  <button type="button" id="btnOpenAll">Apri tutto</button>
+  <button type="button" class="primary" id="btnExport">Esporta</button>
+</div>
+
+<dialog id="dlg">
+  <div class="dlg-head">
+    <h2>Verbale di sopralluogo</h2>
+    <button type="button" id="dlgClose" aria-label="Chiudi">×</button>
+  </div>
+  <div class="dlg-body"><pre id="out"></pre></div>
+  <div class="dlg-actions">
+    <button type="button" class="primary" id="btnCopy">Copia testo</button>
+    <button type="button" id="btnShare">Condividi</button>
+    <button type="button" id="btnDownload">Scarica file</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+/* ============ moduli di mestiere ============ */
+const V3 = ["Sano","Da verificare","Compromesso"];
+const MODULES = {
+  imp:{
+    nome:"Impermeabilizzazione",
+    misure:["Superficie netta (m²)","Perimetro totale (ml)","Di cui contro muro (ml)","Quota utile alla soglia (cm)","Altezza risvolti possibile (cm)","Numero scarichi (cad)"],
+    verdetti:[
+      {id:"imp1",q:"Massetto alla percussione",o:["Sano","Distacco localizzato","Distacco diffuso"],req:true},
+      {id:"imp2",q:"Quota disponibile alla soglia",o:["Basta per sovrapporre","Al limite","Insufficiente: demolire"],req:true},
+      {id:"imp3",q:"Pendenze attuali",o:["Regolari","Irregolari","Contropendenza"],req:true},
+      {id:"imp4",q:"Bordo e scossaline",o:["Presenti e corrette","Presenti ma errate","Assenti"],req:true},
+      {id:"imp5",q:"Scarichi e pluviali",o:["Liberi","Parzialmente ostruiti","Ostruiti o insufficienti"],req:false},
+      {id:"imp6",q:"Montanti ringhiera",o:["In bussole aperte","Da verificare","Annegati nel massetto"],req:false}
+    ],
+    foto:["Vista d'insieme con metro esteso","Ognuno dei quattro angoli","Ogni scarico e pluviale","Giunto muro-pavimento","Soglia e quota disponibile","Ambiente sottostante","Base dei montanti ringhiera"],
+    interfacce:["Serramenti e soglie","Ringhiera e montanti","Gronde e pluviali","Finiture interne sottostanti","Parti comuni condominiali"]
+  },
+  pav:{
+    nome:"Pavimenti e rivestimenti",
+    misure:["Superficie (m²)","Battiscopa (ml)","Gradini (cad)","Quota disponibile alle porte (cm)"],
+    verdetti:[
+      {id:"pav1",q:"Adesione del rivestimento esistente",o:["Sano","Distacco localizzato","Distacco diffuso"],req:true},
+      {id:"pav2",q:"Quota rispetto a porte e soglie",o:["Sufficiente","Al limite","Insufficiente"],req:true},
+      {id:"pav3",q:"Planarità del supporto",o:["Nei limiti","Da rasare","Fuori tolleranza"],req:true},
+      {id:"pav4",q:"Umidità nel supporto",o:["Assente","Sospetta","Conclamata"],req:false}
+    ],
+    foto:["Vista d'insieme","Posa e formato esistente","Soglie e passaggi di porta","Angoli e giunti","Zone ammalorate"],
+    interfacce:["Porte e soglie","Battiscopa esistente","Sanitari e mobili fissi","Impianti a pavimento"]
+  },
+  int:{
+    nome:"Intonaci e facciate",
+    misure:["Superficie (m²)","Altezza massima (m)","Sviluppo perimetrale (ml)","Aperture da contornare (cad)"],
+    verdetti:[
+      {id:"int1",q:"Adesione dell'intonaco esistente",o:["Sano","Distacco localizzato","Distacco diffuso"],req:true},
+      {id:"int2",q:"Risalita capillare alla base",o:["Assente","Sospetta","Conclamata"],req:true},
+      {id:"int3",q:"Stato del supporto murario",o:["Compatto","Degrado localizzato","Degrado diffuso"],req:true},
+      {id:"int4",q:"Cornicioni, davanzali, gocciolatoi",o:["Integri","Da ripristinare","Assenti o inefficaci"],req:false}
+    ],
+    foto:["Ogni prospetto intero","Dettaglio delle zone degradate","Cornicioni e davanzali","Base del muro","Punti di appoggio del ponteggio"],
+    interfacce:["Serramenti e davanzali","Gronde e pluviali","Impianti a parete","Insegne, tende, condizionatori"]
+  },
+  sca:{
+    nome:"Scavi e movimento terra",
+    misure:["Volume di scavo (m³)","Superficie interessata (m²)","Profondità (m)","Distanza di conferimento (km)"],
+    verdetti:[
+      {id:"sca1",q:"Natura del terreno",o:["Sciolto","Compatto","Roccia o trovanti"],req:true},
+      {id:"sca2",q:"Sottoservizi nell'area",o:["Assenti e verificati","Da verificare","Presenti e interferenti"],req:true},
+      {id:"sca3",q:"Accessibilità del mezzo",o:["Piena","Limitata","Non accessibile"],req:true},
+      {id:"sca4",q:"Acqua o falda",o:["Assente","Possibile","Presente"],req:false}
+    ],
+    foto:["Area di intervento","Punto di accesso del mezzo","Chiusini e sottoservizi visibili","Area di deposito o rilevato","Confini e manufatti vicini"],
+    interfacce:["Recinzioni e cancelli","Alberature","Pavimentazioni esistenti","Confini di proprietà"]
+  },
+  ca:{
+    nome:"Ripristino cemento armato",
+    misure:["Superficie da ripristinare (m²)","Sviluppo frontalini (ml)","Spessore medio asportato (cm)"],
+    verdetti:[
+      {id:"ca1",q:"Ferri a vista",o:["Assenti","Localizzati","Diffusi"],req:true},
+      {id:"ca2",q:"Estensione del degrado",o:["Puntuale","Estesa","Strutturale: serve tecnico"],req:true},
+      {id:"ca3",q:"Causa apparente",o:["Infiltrazione","Carbonatazione","Da determinare"],req:true}
+    ],
+    foto:["Elemento nel suo insieme","Ogni zona degradata","Intradosso","Ferri a vista con metro accanto"],
+    interfacce:["Ringhiere ancorate","Pluviali e scarichi","Finiture adiacenti"]
+  },
+  dem:{
+    nome:"Demolizioni e rimozioni",
+    misure:["Volume da demolire (m³)","Superficie (m²)","Spessore (cm)"],
+    verdetti:[
+      {id:"dem1",q:"Elemento portante",o:["No, verificato","Dubbio: serve tecnico","Sì"],req:true},
+      {id:"dem2",q:"Materiali da verificare prima della rimozione",o:["Nessuno","Da verificare","Presenti"],req:true},
+      {id:"dem3",q:"Percorso di calo delle macerie",o:["Libero","Limitato","Da organizzare"],req:true}
+    ],
+    foto:["Elemento da demolire","Appoggi e vincoli","Percorso delle macerie","Area di sosta del cassone"],
+    interfacce:["Impianti dentro l'elemento","Strutture adiacenti","Finiture da salvare"]
+  },
+  alt:{
+    nome:"Altro / misto",
+    misure:["Quantità principale","Quantità secondaria"],
+    verdetti:[{id:"alt1",q:"Stato dell'esistente",o:V3,req:true}],
+    foto:["Vista d'insieme con metro esteso","Dettagli del problema"],
+    interfacce:["Opere di altri","Finiture da salvare"]
+  }
+};
+
+const FOTO_BASE=["Vista d'insieme dall'esterno","Numero civico o riferimento del luogo","Percorso di accesso della squadra","Punto di scarico del materiale"];
+const INT_BASE=["Impianti a vista","Parti comuni","Opere già eseguite da altri","Finiture esistenti da salvare"];
+const VERD_BASE=[
+  {id:"g1",q:"Tracce di umidità o infiltrazione",o:["Assenti","Localizzate","Diffuse"],req:true},
+  {id:"g2",q:"Stato generale dell'esistente",o:["Buono","Da valutare","Compromesso"],req:true}
+];
+const UNITA=["m²","ml","m³","cad","ore","corpo","kg"];
+
+/* ============ stato ============ */
+const KEY="sopralluogo_v1";
+let STORAGE_OK=(function(){
+  try{localStorage.setItem("__t","1");localStorage.removeItem("__t");return true;}catch(e){return false;}
+})();
+let S=carica();
+let mem=null;
+
+function vuoto(){
+  return {cliente:"",luogo:"",data:oggi(),tipi:[],richiesta:"",osservato:"",
+    misure:[],verdetti:{},interfacce:{},foto:{},
+    piano:"",ascensore:"",accessoMat:"",mezzi:{},osp:"",
+    vincoli:{},orari:"",rifiuti:[],cassone:"",
+    incognite:[],nessunaIncognita:false,
+    committente:"",firma:"",residenziale:"",note:"",aperte:{s0:true}};
+}
+function oggi(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function carica(){
+  try{const r=localStorage.getItem(KEY);if(r){return Object.assign(vuoto(),JSON.parse(r));}}catch(e){}
+  return vuoto();
+}
+function salva(){
+  try{localStorage.setItem(KEY,JSON.stringify(S));}
+  catch(e){mem=JSON.stringify(S);}
+}
+
+/* ============ derivati ============ */
+function moduliAttivi(){return S.tipi.length?S.tipi.map(k=>MODULES[k]).filter(Boolean):[];}
+function verdettiAttivi(){
+  const v=VERD_BASE.slice();
+  moduliAttivi().forEach(m=>m.verdetti.forEach(x=>v.push(x)));
+  return v;
+}
+function fotoAttive(){
+  const f=FOTO_BASE.slice();
+  moduliAttivi().forEach(m=>m.foto.forEach(x=>{if(!f.includes(x))f.push(x);}));
+  return f;
+}
+function interfacceAttive(){
+  const i=INT_BASE.slice();
+  moduliAttivi().forEach(m=>m.interfacce.forEach(x=>{if(!i.includes(x))i.push(x);}));
+  return i;
+}
+function misureSuggerite(){
+  const out=[];moduliAttivi().forEach(m=>m.misure.forEach(x=>{if(!out.includes(x))out.push(x);}));return out;
+}
+
+/* ============ blocchi mancanti ============ */
+function mancanti(){
+  const m=[];
+  if(!S.cliente.trim()||!S.luogo.trim()) m.push({t:"Cliente e luogo",s:"s0"});
+  if(!S.tipi.length) m.push({t:"Tipo di lavoro",s:"s0"});
+  if(!S.richiesta.trim()) m.push({t:"Richiesta del cliente",s:"s1"});
+  if(!S.osservato.trim()) m.push({t:"Cosa hai osservato tu",s:"s1"});
+  const mis=S.misure.filter(r=>r.v.trim()&&r.q.trim());
+  if(!mis.length) m.push({t:"Almeno una quantità misurata",s:"s2"});
+  verdettiAttivi().forEach(v=>{
+    if(v.req&&!S.verdetti[v.id]) m.push({t:"Verdetto: "+v.q,s:"s3"});
+  });
+  if(!S.piano.trim()) m.push({t:"Piano e accesso",s:"s5"});
+  if(!S.osp) m.push({t:"Suolo pubblico sì o no",s:"s5"});
+  if(!S.nessunaIncognita && !S.incognite.filter(x=>x.trim()).length)
+    m.push({t:"Incognite dichiarate",s:"s8"});
+  if(!S.committente) m.push({t:"Chi è il committente",s:"s9"});
+  if(!S.firma) m.push({t:"Dove si firma",s:"s9"});
+  return m;
+}
+
+/* ============ helper DOM ============ */
+function el(tag,attrs,kids){
+  const n=document.createElement(tag);
+  if(attrs)for(const k in attrs){
+    if(k==="class")n.className=attrs[k];
+    else if(k==="text")n.textContent=attrs[k];
+    else if(k.startsWith("on"))n.addEventListener(k.slice(2),attrs[k]);
+    else if(attrs[k]!==null&&attrs[k]!==undefined&&attrs[k]!==false)n.setAttribute(k,attrs[k]);
+  }
+  (kids||[]).forEach(c=>{if(c)n.appendChild(typeof c==="string"?document.createTextNode(c):c);});
+  return n;
+}
+function campo(label,val,on,type){
+  const i=el("input",{type:type||"text",value:val||""});
+  i.addEventListener("input",()=>{on(i.value);salva();aggiornaTesta();});
+  return el("label",{class:"f"},[el("span",{text:label}),i]);
+}
+function area(label,val,on,ph){
+  const t=el("textarea",{placeholder:ph||""});t.value=val||"";
+  t.addEventListener("input",()=>{on(t.value);salva();aggiornaTesta();});
+  return el("label",{class:"f"},[el("span",{text:label}),t]);
+}
+function spunta(label,on,cb){
+  const box=el("div",{class:"box",text:"✓"});
+  const w=el("label",{class:"check"+(on?" on":"")},[
+    el("input",{type:"checkbox",checked:on?"checked":false}),box,el("div",{class:"lb",text:label})
+  ]);
+  w.querySelector("input").addEventListener("change",e=>{
+    w.classList.toggle("on",e.target.checked);cb(e.target.checked);salva();aggiornaTesta();
+  });
+  return w;
+}
+function scelta(label,val,opts,cb){
+  const s=el("select",{});
+  s.appendChild(el("option",{value:"",text:"—"}));
+  opts.forEach(o=>{
+    const op=el("option",{value:o,text:o});if(val===o)op.selected=true;s.appendChild(op);
+  });
+  s.addEventListener("change",()=>{cb(s.value);salva();aggiornaTesta();});
+  return el("label",{class:"f"},[el("span",{text:label}),s]);
+}
+
+/* ============ render ============ */
+function sezione(id,titolo,corpo,stato){
+  const tick=el("div",{class:"tick "+stato.cls,text:stato.cls==="done"?"✓":(stato.cls==="hole"?"!":"")});
+  const head=el("button",{class:"sec-head",type:"button"},[
+    tick,el("h2",{text:titolo}),
+    el("span",{class:"chev",text:"▶"})
+  ]);
+  const sec=el("section",{class:S.aperte[id]?"open":"",id:id},[head,el("div",{class:"sec-body"},corpo)]);
+  head.addEventListener("click",()=>{
+    S.aperte[id]=!S.aperte[id];sec.classList.toggle("open");salva();
+  });
+  return sec;
+}
+
+function render(){
+  const app=document.getElementById("app");
+  app.textContent="";
+  const mm=mancanti();
+  const bucaIn=s=>mm.some(x=>x.s===s);
+  const st=(id,pieno)=>({cls:bucaIn(id)?"hole":(pieno?"done":"")});
+
+  /* --- 0 testata --- */
+  const chips=el("div",{class:"chips"});
+  Object.keys(MODULES).forEach(k=>{
+    const c=el("button",{class:"chip"+(S.tipi.includes(k)?" on":""),type:"button",text:MODULES[k].nome});
+    c.addEventListener("click",()=>{
+      const i=S.tipi.indexOf(k);
+      if(i<0)S.tipi.push(k);else S.tipi.splice(i,1);
+      salva();render();
+    });
+    chips.appendChild(c);
+  });
+  app.appendChild(sezione("s0","Testata",[
+    campo("Cliente",S.cliente,v=>S.cliente=v),
+    campo("Luogo e indirizzo",S.luogo,v=>S.luogo=v),
+    campo("Data",S.data,v=>S.data=v,"date"),
+    el("label",{class:"f"},[el("span",{text:"Tipo di lavoro (anche più di uno)"}),chips])
+  ],st("s0",S.cliente&&S.luogo&&S.tipi.length)));
+
+  /* --- 1 richiesta / osservato --- */
+  app.appendChild(sezione("s1","Richiesta e osservazione",[
+    el("p",{class:"hint",text:"Due campi separati, mai fusi. Lo scarto tra i due è dove nascono i problemi."}),
+    area("Cosa ti ha chiesto il cliente, con parole sue",S.richiesta,v=>S.richiesta=v),
+    area("Cosa hai osservato tu",S.osservato,v=>S.osservato=v)
+  ],st("s1",S.richiesta&&S.osservato)));
+
+  /* --- 2 misure --- */
+  const mis=el("div",{});
+  S.misure.forEach((r,i)=>{
+    const v=el("input",{type:"text",value:r.v,placeholder:"voce"});
+    const q=el("input",{type:"text",class:"q num",value:r.q,placeholder:"qtà",inputmode:"decimal"});
+    const u=el("select",{});
+    UNITA.forEach(x=>{const o=el("option",{value:x,text:x});if(r.u===x)o.selected=true;u.appendChild(o);});
+    v.addEventListener("input",()=>{r.v=v.value;salva();aggiornaTesta();});
+    q.addEventListener("input",()=>{r.q=q.value;salva();aggiornaTesta();});
+    u.addEventListener("change",()=>{r.u=u.value;salva();});
+    const d=el("button",{class:"del",type:"button",text:"×","aria-label":"Elimina riga"});
+    d.addEventListener("click",()=>{S.misure.splice(i,1);salva();render();});
+    mis.appendChild(el("div",{class:"row"},[v,q,u,d]));
+  });
+  const sugg=misureSuggerite().filter(s=>!S.misure.some(r=>r.v===s));
+  const addMis=el("button",{class:"add",type:"button",text:"+ Aggiungi voce"});
+  addMis.addEventListener("click",()=>{S.misure.push({v:"",q:"",u:"m²"});salva();render();});
+  const suggBox=el("div",{});
+  if(sugg.length){
+    suggBox.appendChild(el("p",{class:"hint",text:"Da questo tipo di lavoro servono di solito:"}));
+    const cc=el("div",{class:"chips"});
+    sugg.forEach(s=>{
+      const b=el("button",{class:"chip",type:"button",text:s});
+      b.addEventListener("click",()=>{
+        const um=(s.match(/\(([^)]+)\)/)||[])[1]||"m²";
+        S.misure.push({v:s.replace(/\s*\([^)]*\)/,""),q:"",u:UNITA.includes(um)?um:"m²"});
+        salva();render();
+      });
+      cc.appendChild(b);
+    });
+    suggBox.appendChild(cc);
+  }
+  app.appendChild(sezione("s2","Quantità misurate",[
+    el("p",{class:"hint",text:"Nelle unità del tuo prezzario. Se non sai in che unità si prezza, non sai ancora cosa misurare."}),
+    mis,addMis,suggBox
+  ],st("s2",S.misure.some(r=>r.v.trim()&&r.q.trim()))));
+
+  /* --- 3 diagnostica --- */
+  const dg=el("div",{});
+  const va=verdettiAttivi();
+  if(!va.length||!S.tipi.length) dg.appendChild(el("p",{class:"hint",text:"Scegli il tipo di lavoro nella testata per caricare le verifiche giuste."}));
+  va.forEach(v=>{
+    const opts=el("div",{class:"opts"});
+    v.o.forEach((o,idx)=>{
+      const b=el("button",{class:"opt"+(S.verdetti[v.id]===o?" sel":""),type:"button","data-t":String(idx+1),text:o});
+      b.addEventListener("click",()=>{
+        S.verdetti[v.id]=S.verdetti[v.id]===o?null:o;salva();render();
+      });
+      opts.appendChild(b);
+    });
+    dg.appendChild(el("div",{class:"verdict"},[
+      el("div",{class:"q"},[document.createTextNode(v.q),v.req?el("em",{text:"bloccante"}):null]),opts
+    ]));
+  });
+  const vreq=va.filter(v=>v.req);
+  app.appendChild(sezione("s3","Diagnostica",[
+    el("p",{class:"hint",text:"Il tuo giudizio, non la foto. Percussione, livella, filo, prova di scarico: queste le fai tu e nessuno le ricava dopo."}),
+    dg
+  ],st("s3",vreq.length&&vreq.every(v=>S.verdetti[v.id]))));
+
+  /* --- 4 interfacce --- */
+  const itf=el("div",{});
+  interfacceAttive().forEach(x=>{
+    const cur=S.interfacce[x]||"";
+    const opts=el("div",{class:"opts"});
+    [["Incluso",1],["Escluso",2],["Non presente",1]].forEach(([o,t],i)=>{
+      const b=el("button",{class:"opt"+(cur===o?" sel":""),type:"button","data-t":String(t),text:o});
+      b.addEventListener("click",()=>{S.interfacce[x]=cur===o?"":o;salva();render();});
+      opts.appendChild(b);
+    });
+    itf.appendChild(el("div",{class:"verdict"},[el("div",{class:"q"},[x]),opts]));
+  });
+  app.appendChild(sezione("s4","Interfacce",[
+    el("p",{class:"hint",text:"Dove il tuo lavoro tocca qualcosa che non è tuo. Deciso qui, non in cantiere."}),
+    itf
+  ],st("s4",Object.values(S.interfacce).some(Boolean))));
+
+  /* --- 5 accesso e logistica --- */
+  const mezziBox=el("div",{});
+  ["Ponteggio","Piattaforma aerea","Autogrù","Escavatore","Nessun mezzo speciale"].forEach(x=>{
+    mezziBox.appendChild(spunta(x,!!S.mezzi[x],v=>{S.mezzi[x]=v;}));
+  });
+  const ospSel=scelta("Occupazione di suolo pubblico",S.osp,["Sì","No"],v=>{S.osp=v;render();});
+  const ospFlag=el("div",{class:"flag"+(S.osp==="Sì"?"":" hidden"),
+    text:"Suolo pubblico: la pratica va avviata subito. La data di inizio la detta l'autorizzazione, non tu. Ricorda la planimetria quotata e la larghezza di carreggiata residua."});
+  app.appendChild(sezione("s5","Accesso e logistica",[
+    campo("Piano e accesso (ascensore, scale, larghezze)",S.piano,v=>S.piano=v),
+    campo("Da dove entra il materiale",S.accessoMat,v=>S.accessoMat=v),
+    el("label",{class:"f"},[el("span",{text:"Mezzi e attrezzature necessarie"}),mezziBox]),
+    ospSel,ospFlag
+  ],st("s5",S.piano&&S.osp)));
+
+  /* --- 6 vincoli operativi --- */
+  const vv=el("div",{});
+  ["Persone presenti durante i lavori","Acqua disponibile in cantiere","Corrente disponibile in cantiere","Vincoli di orario","Vincoli di stagione o temperatura","Tempi di maturazione da rispettare"].forEach(x=>{
+    vv.appendChild(spunta(x,!!S.vincoli[x],v=>{S.vincoli[x]=v;}));
+  });
+  app.appendChild(sezione("s6","Vincoli operativi",[
+    el("p",{class:"hint",text:"Non spostano il prezzo unitario, spostano le giornate. Cioè il costo vero."}),
+    vv,campo("Note su orari, accessi, presenze",S.orari,v=>S.orari=v)
+  ],st("s6",Object.values(S.vincoli).some(Boolean)||S.orari)));
+
+  /* --- 7 rifiuti --- */
+  const rf=el("div",{});
+  S.rifiuti.forEach((r,i)=>{
+    const t=el("input",{type:"text",value:r.t,placeholder:"tipologia"});
+    const q=el("input",{type:"text",class:"q num",value:r.q,placeholder:"m³",inputmode:"decimal"});
+    t.addEventListener("input",()=>{r.t=t.value;salva();});
+    q.addEventListener("input",()=>{r.q=q.value;salva();});
+    const d=el("button",{class:"del",type:"button",text:"×","aria-label":"Elimina riga"});
+    d.addEventListener("click",()=>{S.rifiuti.splice(i,1);salva();render();});
+    rf.appendChild(el("div",{class:"row"},[t,q,d]));
+  });
+  const addRf=el("button",{class:"add",type:"button",text:"+ Aggiungi tipologia"});
+  addRf.addEventListener("click",()=>{S.rifiuti.push({t:"",q:""});salva();render();});
+  app.appendChild(sezione("s7","Rifiuti",[
+    el("p",{class:"hint",text:"Separati per tipologia, non a corpo. Le tipologie che richiedono verifica prima della rimozione vanno segnate tra le incognite."}),
+    rf,addRf,campo("Dove sosta il cassone",S.cassone,v=>S.cassone=v)
+  ],st("s7",S.rifiuti.some(r=>r.t.trim()))));
+
+  /* --- 8 incognite --- */
+  const ic=el("div",{});
+  S.incognite.forEach((x,i)=>{
+    const t=el("input",{type:"text",value:x,placeholder:"cosa non hai potuto verificare"});
+    t.addEventListener("input",()=>{S.incognite[i]=t.value;salva();aggiornaTesta();});
+    const d=el("button",{class:"del",type:"button",text:"×","aria-label":"Elimina riga"});
+    d.addEventListener("click",()=>{S.incognite.splice(i,1);salva();render();});
+    ic.appendChild(el("div",{class:"row"},[t,d]));
+  });
+  const addIc=el("button",{class:"add",type:"button",text:"+ Aggiungi incognita"});
+  addIc.addEventListener("click",()=>{S.incognite.push("");S.nessunaIncognita=false;salva();render();});
+  app.appendChild(sezione("s8","Incognite dichiarate",[
+    el("p",{class:"hint",text:"Ognuna diventa una riserva scritta o un'esclusione in preventivo. Senza questo blocco, ogni sorpresa la paghi tu."}),
+    ic,addIc,
+    spunta("Nessuna incognita: ho verificato tutto",S.nessunaIncognita,v=>{S.nessunaIncognita=v;render();})
+  ],st("s8",S.nessunaIncognita||S.incognite.some(x=>x.trim()))));
+
+  /* --- 9 contrattuale --- */
+  const firmaFlag=el("div",{class:"flag"+(S.firma==="A casa del cliente"?"":" hidden"),
+    text:"Firma fuori sede: senza informativa scritta sul recesso, la finestra passa da 14 giorni a 12 mesi. Porta il modulo."});
+  app.appendChild(sezione("s9","Inquadramento contrattuale",[
+    scelta("Committente",S.committente,["Privato singolo","Più comproprietari","Amministratore di condominio","Impresa o ditta"],v=>S.committente=v),
+    scelta("Dove si firma",S.firma,["In ufficio","A casa del cliente","Da remoto"],v=>{S.firma=v;render();}),
+    firmaFlag,
+    scelta("Immobile residenziale",S.residenziale,["Sì","No","Da verificare"],v=>S.residenziale=v)
+  ],st("s9",S.committente&&S.firma)));
+
+  /* --- 10 foto --- */
+  const ft=el("div",{});
+  const lista=fotoAttive();
+  lista.forEach(x=>ft.appendChild(spunta(x,!!S.foto[x],v=>{S.foto[x]=v;})));
+  app.appendChild(sezione("s10","Set fotografico",[
+    el("p",{class:"hint",text:"Cinque secondi di nota vocale per ogni foto. Set uguale ogni volta: è quello che rende confrontabili i sopralluoghi."}),
+    ft
+  ],{cls:lista.every(x=>S.foto[x])?"done":""}));
+
+  /* --- 11 note --- */
+  app.appendChild(sezione("s11","Note libere",[
+    area("Tutto quello che non sta nei campi sopra",S.note,v=>S.note=v)
+  ],{cls:S.note?"done":""}));
+
+  aggiornaTesta();
+}
+
+function aggiornaTesta(){
+  const mm=mancanti();
+  const b=document.getElementById("gapBadge");
+  b.querySelector("b").textContent=String(mm.length);
+  b.classList.toggle("zero",mm.length===0);
+  b.querySelector("span").textContent=mm.length===0?"scheda completa":(mm.length===1?"dato bloccante manca":"dati bloccanti mancanti");
+  document.getElementById("hTitle").textContent=S.cliente.trim()||"Nuovo sopralluogo";
+  const tipi=S.tipi.map(k=>MODULES[k].nome).join(" · ");
+  document.getElementById("hSub").textContent=[S.luogo.trim(),tipi].filter(Boolean).join(" — ")||"Compila la testata per iniziare";
+  const box=document.getElementById("missingBox"),ul=document.getElementById("missingList");
+  if(mm.length&&!box.dataset.hidden){
+    box.hidden=false;ul.textContent="";
+    mm.slice(0,6).forEach(x=>{
+      const li=el("li",{});
+      const a=el("button",{type:"button",text:x.t,style:"background:none;border:none;color:#fff;text-decoration:underline;padding:0;font:inherit;cursor:pointer;text-align:left"});
+      a.addEventListener("click",()=>{
+        S.aperte[x.s]=true;salva();render();
+        const t=document.getElementById(x.s);
+        if(t){t.classList.add("open");t.scrollIntoView({block:"start",behavior:"smooth"});}
+      });
+      li.appendChild(a);ul.appendChild(li);
+    });
+    if(mm.length>6)ul.appendChild(el("li",{text:"e altri "+(mm.length-6)}));
+  }else{box.hidden=true;ul.textContent="";}
+}
+
+/* ============ esportazione ============ */
+function testo(){
+  const L=[];
+  const P=(k,v)=>{if(v&&String(v).trim())L.push(k+": "+v);};
+  L.push("VERBALE DI SOPRALLUOGO");
+  L.push("");
+  P("Cliente",S.cliente);P("Luogo",S.luogo);P("Data",S.data);
+  P("Tipo di lavoro",S.tipi.map(k=>MODULES[k].nome).join(", "));
+  L.push("");
+  L.push("RICHIESTA DEL CLIENTE");L.push(S.richiesta.trim()||"—");L.push("");
+  L.push("OSSERVAZIONE DIRETTA");L.push(S.osservato.trim()||"—");L.push("");
+  L.push("QUANTITÀ MISURATE");
+  const mis=S.misure.filter(r=>r.v.trim());
+  if(mis.length)mis.forEach(r=>L.push("- "+r.v+": "+(r.q||"?")+" "+r.u));else L.push("- nessuna");
+  L.push("");
+  L.push("DIAGNOSTICA");
+  verdettiAttivi().forEach(v=>L.push("- "+v.q+": "+(S.verdetti[v.id]||"NON RILEVATO")));
+  L.push("");
+  L.push("INTERFACCE");
+  const itf=interfacceAttive().filter(x=>S.interfacce[x]);
+  if(itf.length)itf.forEach(x=>L.push("- "+x+": "+S.interfacce[x]));else L.push("- non definite");
+  L.push("");
+  L.push("ACCESSO E LOGISTICA");
+  P("Piano e accesso",S.piano);P("Ingresso materiale",S.accessoMat);
+  const mz=Object.keys(S.mezzi).filter(k=>S.mezzi[k]);
+  if(mz.length)L.push("Mezzi: "+mz.join(", "));
+  P("Suolo pubblico",S.osp);
+  if(S.osp==="Sì")L.push("  >> avviare subito la pratica: la data di inizio dipende dall'autorizzazione");
+  L.push("");
+  L.push("VINCOLI OPERATIVI");
+  const vk=Object.keys(S.vincoli).filter(k=>S.vincoli[k]);
+  if(vk.length)vk.forEach(k=>L.push("- "+k));else L.push("- nessuno segnalato");
+  if(S.orari.trim())L.push("Note: "+S.orari);
+  L.push("");
+  L.push("RIFIUTI");
+  const rf=S.rifiuti.filter(r=>r.t.trim());
+  if(rf.length)rf.forEach(r=>L.push("- "+r.t+": "+(r.q||"?")+" m³"));else L.push("- non quantificati");
+  P("Sosta cassone",S.cassone);
+  L.push("");
+  L.push("INCOGNITE DA TRASFORMARE IN RISERVE O ESCLUSIONI");
+  const ic=S.incognite.filter(x=>x.trim());
+  if(ic.length)ic.forEach(x=>L.push("- "+x));
+  else L.push(S.nessunaIncognita?"- dichiarato: nessuna, verificato tutto":"- NON COMPILATO");
+  L.push("");
+  L.push("INQUADRAMENTO CONTRATTUALE");
+  P("Committente",S.committente);P("Firma",S.firma);
+  if(S.firma==="A casa del cliente")L.push("  >> serve informativa scritta sul recesso");
+  P("Residenziale",S.residenziale);
+  L.push("");
+  L.push("SET FOTOGRAFICO");
+  const fa=fotoAttive();
+  fa.forEach(x=>L.push((S.foto[x]?"[x] ":"[ ] ")+x));
+  const manc=fa.filter(x=>!S.foto[x]);
+  if(manc.length)L.push(">> mancano "+manc.length+" scatti");
+  if(S.note.trim()){L.push("");L.push("NOTE");L.push(S.note.trim());}
+  const mm=mancanti();
+  if(mm.length){
+    L.push("");L.push("SCHEDA INCOMPLETA — mancano:");
+    mm.forEach(x=>L.push("- "+x.t));
+  }
+  return L.join("\n");
+}
+function nomeFile(){
+  const c=(S.cliente||"sopralluogo").replace(/[^\wàèéìòùÀÈÉÌÒÙ ]/g,"").trim().replace(/\s+/g,"-").toLowerCase();
+  return "sopralluogo-"+(c||"senza-nome")+"-"+S.data+".txt";
+}
+function toast(t){
+  const n=document.getElementById("toast");n.textContent=t;n.classList.add("show");
+  setTimeout(()=>n.classList.remove("show"),1800);
+}
+
+/* ============ eventi ============ */
+document.getElementById("hideMissing").addEventListener("click",()=>{
+  const b=document.getElementById("missingBox");b.dataset.hidden="1";b.hidden=true;
+});
+document.getElementById("btnOpenAll").addEventListener("click",e=>{
+  const tutte=["s0","s1","s2","s3","s4","s5","s6","s7","s8","s9","s10","s11"];
+  const apri=!tutte.every(k=>S.aperte[k]);
+  tutte.forEach(k=>S.aperte[k]=apri);
+  e.target.textContent=apri?"Chiudi tutto":"Apri tutto";
+  salva();render();
+});
+document.getElementById("btnReset").addEventListener("click",()=>{
+  if(confirm("Svuotare la scheda e iniziare un nuovo sopralluogo? I dati non esportati vanno persi.")){
+    S=vuoto();salva();
+    const b=document.getElementById("missingBox");delete b.dataset.hidden;
+    render();window.scrollTo(0,0);
+  }
+});
+const dlg=document.getElementById("dlg");
+document.getElementById("btnExport").addEventListener("click",()=>{
+  document.getElementById("out").textContent=testo();
+  if(dlg.showModal)dlg.showModal();else dlg.setAttribute("open","");
+});
+document.getElementById("dlgClose").addEventListener("click",()=>dlg.close?dlg.close():dlg.removeAttribute("open"));
+document.getElementById("btnCopy").addEventListener("click",async()=>{
+  const t=testo();
+  try{await navigator.clipboard.writeText(t);toast("Testo copiato");}
+  catch(e){
+    const ta=document.createElement("textarea");ta.value=t;document.body.appendChild(ta);
+    ta.select();try{document.execCommand("copy");toast("Testo copiato");}catch(e2){toast("Copia non riuscita: seleziona a mano");}
+    document.body.removeChild(ta);
+  }
+});
+document.getElementById("btnShare").addEventListener("click",async()=>{
+  const t=testo();
+  if(navigator.share){try{await navigator.share({title:"Sopralluogo "+(S.cliente||""),text:t});}catch(e){}}
+  else toast("Condivisione non disponibile: usa Copia");
+});
+document.getElementById("btnDownload").addEventListener("click",()=>{
+  const b=new Blob([testo()],{type:"text/plain;charset=utf-8"});
+  const u=URL.createObjectURL(b);
+  const a=document.createElement("a");a.href=u;a.download=nomeFile();document.body.appendChild(a);a.click();
+  document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(u),1500);
+  toast("File salvato");
+});
+
+if(!STORAGE_OK){
+  const n=document.getElementById("noteSave");
+  n.textContent="Questo browser non salva i dati della scheda. Esporta prima di chiudere la pagina, altrimenti perdi tutto.";
+  n.style.color="#8A1A14";n.style.fontWeight="600";
+  n.style.background="#FFECEA";n.style.border="1px solid #E3A9A4";
+  n.style.borderRadius="3px";n.style.padding="10px 12px";n.style.margin="0 10px 14px";
+}
+render();
+
+/* funzionamento senza rete, una volta aggiunta alla schermata home */
+if("serviceWorker" in navigator && location.protocol.startsWith("http")){
+  window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{});});
+}
+</script>
+</body>
+</html>
